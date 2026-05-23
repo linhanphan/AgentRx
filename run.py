@@ -623,6 +623,7 @@ def run_pipeline(input_path: str, args):
         run_name = args.run_name or f"{stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         run_dir = os.path.join(str(REPO_ROOT), "runs", run_name)
     ensure_dir(run_dir)
+    g.RUN_DIR = run_dir
 
     print(f"Run directory: {run_dir}")
 

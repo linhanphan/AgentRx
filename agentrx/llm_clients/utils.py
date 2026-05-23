@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+import agentrx.pipeline.globals as g
 
 def serialize_custom(obj):
     if hasattr(obj, "model_dump"):
@@ -33,8 +34,9 @@ def serialize_custom(obj):
 
 def dump_call(request_payload, response_obj):
     try:
-        # Create directory at the project root
-        call_raw_dir = os.path.join(os.getcwd(), "call_raw")
+        # Create directory inside the current run directory, or fallback to project root
+        base_dir = getattr(g, "RUN_DIR", None) or os.getcwd()
+        call_raw_dir = os.path.join(base_dir, "call_raw")
         os.makedirs(call_raw_dir, exist_ok=True)
         
         # Generate high-precision datetime string

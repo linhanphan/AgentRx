@@ -3,7 +3,11 @@ import time
 from datetime import datetime
 from openai import OpenAI
 import agentrx.pipeline.globals as g
-import agentrx.reports.metrics as metrics
+try:
+    import agentrx.reports.metrics as metrics
+except ImportError:
+    metrics = None
+
 from agentrx.llm_clients.utils import dump_call
 
 class LLMAgent:
@@ -61,25 +65,26 @@ class LLMAgent:
             completion_tokens = getattr(response.usage, "completion_tokens", 0) or 0
             total_tokens = getattr(response.usage, "total_tokens", 0) or 0
 
-        # Create telemetry objects
-        token_usage = metrics.TokenUsage(
-            prompt_tokens=prompt_tokens,
-            output_tokens=completion_tokens,
-            total_tokens=total_tokens
-        )
+        # Create telemetry objects if metrics is available
+        if metrics is not None:
+            token_usage = metrics.TokenUsage(
+                prompt_tokens=prompt_tokens,
+                output_tokens=completion_tokens,
+                total_tokens=total_tokens
+            )
 
-        time_info = metrics.TimingInfo(
-            start_time=start_timestamp,
-            end_time=end_timestamp,
-            execution_time_sec=execution_time_sec
-        )
+            time_info = metrics.TimingInfo(
+                start_time=start_timestamp,
+                end_time=end_timestamp,
+                execution_time_sec=execution_time_sec
+            )
 
-        self.last_call_telemetry = metrics.LLMCallTelemetry(
-            tokens=token_usage,
-            time=time_info,
-            model_name=self.model_name,
-            instance=self.base_url
-        )
+            self.last_call_telemetry = metrics.LLMCallTelemetry(
+                tokens=token_usage,
+                time=time_info,
+                model_name=self.model_name,
+                instance=self.base_url
+            )
 
         return response
 
