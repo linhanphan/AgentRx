@@ -45,6 +45,13 @@ class LLMAgent:
                     model=self.model_name,
                     messages=messages
                 )
+                # Dump raw request and response json
+                from agentrx.llm_clients.utils import dump_call
+                request_payload = {
+                    "model": self.model_name,
+                    "messages": messages
+                }
+                dump_call(request_payload, response)
                 return response
             except RateLimitError as e:
                 if attempt < MAX_RETRIES - 1:

@@ -202,6 +202,10 @@ class AllVerifier:
         elif self.client == "azure":
             self.llm_client = LLMAgentAzure.azure_mk_client()
             self.model_name = g.DEPLOYMENT
+        elif self.client == "openrouter":
+            from agentrx.llm_clients.openrouter import LLMAgent as LLMAgentOpenRouter
+            self.llm_client = LLMAgentOpenRouter.openrouter_mk_client()
+            self.model_name = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
         else:
             self.llm_client = LLMAgentTrapi.trapi_mk_client()
             self.model_name = g.TRAPI_DEPLOYMENT_NAME
@@ -1140,6 +1144,20 @@ def main():
         const="trapi",
         dest="client",
         help="Use TRAPI client"
+    )
+    endpoint_grp.add_argument(
+        "--copilot",
+        action="store_const",
+        const="copilot",
+        dest="client",
+        help="Use GitHub Copilot CLI client"
+    )
+    endpoint_grp.add_argument(
+        "--openrouter",
+        action="store_const",
+        const="openrouter",
+        dest="client",
+        help="Use OpenRouter client"
     )
     parser.set_defaults(client=g.DEFAULT_ENDPOINT)
     parser.add_argument("--domain", type=str, default="flash",

@@ -677,8 +677,12 @@ def llm_ir(
         from agentrx.llm_clients.trapi import LLMAgent as LLMAgentTrapi
         client = LLMAgentTrapi.trapi_mk_client()
         model = g.TRAPI_DEPLOYMENT_NAME
+    elif endpoint == "openrouter":
+        from agentrx.llm_clients.openrouter import LLMAgent as LLMAgentOpenRouter
+        client = LLMAgentOpenRouter.openrouter_mk_client()
+        model = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
     else:
-        raise ValueError(f"Unknown endpoint: {endpoint!r}. Expected 'copilot', 'azure', or 'trapi'.")
+        raise ValueError(f"Unknown endpoint: {endpoint!r}. Expected 'copilot', 'azure', 'trapi', or 'openrouter'.")
 
     # Max chars for the raw trajectory JSON sent to the LLM.
     # ~200K tokens ≈ 800K chars, leaving room for system prompt + response.

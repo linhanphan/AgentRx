@@ -27,6 +27,7 @@ try:
     import agentrx.pipeline.globals as g
     from agentrx.llm_clients.azure import LLMAgent as LLMAgentAzure
     from agentrx.llm_clients.trapi import LLMAgent as LLMAgentTrapi
+    from agentrx.llm_clients.openrouter import LLMAgent as LLMAgentOpenRouter
     # Add metrics if available
     import agentrx.reports.metrics as metrics
     
@@ -823,6 +824,8 @@ def get_llm_judge_class():
         base_class = LLMAgentCopilot
     elif ENDPOINT_USED == "azure":
         base_class = LLMAgentAzure
+    elif ENDPOINT_USED == "openrouter":
+        base_class = LLMAgentOpenRouter
     else:
         base_class = LLMAgentTrapi
     
@@ -1824,7 +1827,7 @@ def main():
                         help='Path to trajectory log file or directory')
     parser.add_argument('--ground_truth_file', default='ground_truth_tau_retail.json',
                         help='Path to ground truth JSON file for accuracy evaluation')
-    parser.add_argument('--endpoint', default=g.DEFAULT_ENDPOINT, choices=['copilot', 'azure', 'trapi'],
+    parser.add_argument('--endpoint', default=g.DEFAULT_ENDPOINT, choices=['copilot', 'azure', 'trapi', 'openrouter'],
                         help='LLM API endpoint to use (default: copilot)')
     parser.add_argument('--with-context', action='store_true',
                         help='Include invariant violation context in prompts')
@@ -1860,6 +1863,9 @@ def main():
     elif ENDPOINT_USED == "azure":
         api_version = g.API_VERSION
         model_name = g.MODEL_NAME
+    elif ENDPOINT_USED == "openrouter":
+        api_version = ""
+        model_name = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
     else:
         api_version = g.TRAPI_API_VERSION
         model_name = g.TRAPI_MODEL_NAME

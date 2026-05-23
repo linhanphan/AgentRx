@@ -1872,6 +1872,10 @@ class DynamicInvariantGenerator:
         elif endpoint == "azure":
             self.client = LLMAgentAzure.azure_mk_client()
             self.model_name = model_name or g.DEPLOYMENT
+        elif endpoint == "openrouter":
+            from agentrx.llm_clients.openrouter import LLMAgent as LLMAgentOpenRouter
+            self.client = LLMAgentOpenRouter.openrouter_mk_client()
+            self.model_name = model_name or os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
         else:
             self.client = LLMAgentTrapi.trapi_mk_client()
             self.model_name = model_name or g.TRAPI_DEPLOYMENT_NAME
@@ -2160,6 +2164,10 @@ class OneShotDynamicInvariantGenerator:
         elif endpoint == "azure":
             self.client = LLMAgentAzure.azure_mk_client()
             self.model_name = model_name or g.DEPLOYMENT
+        elif endpoint == "openrouter":
+            from agentrx.llm_clients.openrouter import LLMAgent as LLMAgentOpenRouter
+            self.client = LLMAgentOpenRouter.openrouter_mk_client()
+            self.model_name = model_name or os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
         else:
             self.client = LLMAgentTrapi.trapi_mk_client()
             self.model_name = model_name or g.TRAPI_DEPLOYMENT_NAME

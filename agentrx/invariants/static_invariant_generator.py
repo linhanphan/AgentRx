@@ -774,6 +774,11 @@ class StaticInvariantGenerator:
             self.client = LLMAgentAzure.azure_mk_client()
             self.model_name = model_name or g.DEPLOYMENT
             self._endpoint_url = g.ENDPOINT
+        elif endpoint == "openrouter":
+            from agentrx.llm_clients.openrouter import LLMAgent as LLMAgentOpenRouter
+            self.client = LLMAgentOpenRouter.openrouter_mk_client()
+            self.model_name = model_name or os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+            self._endpoint_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         else:
             self.client = LLMAgentTrapi.trapi_mk_client()
             self.model_name = model_name or g.TRAPI_DEPLOYMENT_NAME

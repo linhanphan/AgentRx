@@ -1,46 +1,33 @@
-import json
 import os
 import time
 from datetime import datetime
+from openai import OpenAI
 import agentrx.pipeline.globals as g
 import agentrx.reports.metrics as metrics
-
-from openai import AzureOpenAI
-from azure.identity import (
-    ChainedTokenCredential,
-    AzureCliCredential,
-    ManagedIdentityCredential,
-    get_bearer_token_provider,
-    DefaultAzureCredential
-)
+from agentrx.llm_clients.utils import dump_call
 
 class LLMAgent:
     def __init__(
             self,
-            api_version,  
-            model_name,  
-            model_version, 
-            deployment_name,
-    ):     
+            api_version=None,
+            model_name=None,
+            model_version=None,
+            deployment_name=None,
+    ):
         self.api_version = api_version
-        self.model_name = model_name
+        self.model_name = model_name or os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
         self.model_version = model_version
         self.deployment_name = deployment_name
-        self.endpoint = g.ENDPOINT
+        
+        self.api_key = os.getenv("OPENROUTER_API_KEY", "")
+        self.base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         
         # Initialize telemetry tracking
         self.last_call_telemetry = None
 
-        # Authenticate with Azure using Managed Identity Credential
-        token_provider = get_bearer_token_provider(
-            DefaultAzureCredential(managed_identity_client_id=g.CLIENT_ID),
-            "https://cognitiveservices.azure.com/.default"
-        )
-
-        self.client = AzureOpenAI(
-            api_version=self.api_version,
-            azure_endpoint=self.endpoint,
-            azure_ad_token_provider=token_provider
+        self.client = OpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key
         )
 
     def get_llm_response(self, messages):
@@ -59,7 +46,6 @@ class LLMAgent:
         execution_time_sec = round(end_time - start_time, 4)
 
         # Dump raw request and response json
-        from agentrx.llm_clients.utils import dump_call
         request_payload = {
             "model": self.model_name,
             "messages": messages
@@ -71,9 +57,9 @@ class LLMAgent:
         completion_tokens = 0
         total_tokens = 0
         if hasattr(response, "usage") and response.usage is not None:
-            prompt_tokens = response.usage.prompt_tokens or 0
-            completion_tokens = response.usage.completion_tokens or 0
-            total_tokens = response.usage.total_tokens or 0
+            prompt_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+            completion_tokens = getattr(response.usage, "completion_tokens", 0) or 0
+            total_tokens = getattr(response.usage, "total_tokens", 0) or 0
 
         # Create telemetry objects
         token_usage = metrics.TokenUsage(
@@ -92,20 +78,17 @@ class LLMAgent:
             tokens=token_usage,
             time=time_info,
             model_name=self.model_name,
-            instance=self.endpoint
+            instance=self.base_url
         )
 
         return response
 
     @staticmethod
-    def azure_mk_client() -> AzureOpenAI:
-        """Create an Azure OpenAI client using credentials from globals/.env."""
-        token_provider = get_bearer_token_provider(
-            DefaultAzureCredential(managed_identity_client_id=g.CLIENT_ID),
-            "https://cognitiveservices.azure.com/.default",
-        )
-        return AzureOpenAI(
-            api_version=g.API_VERSION,
-            azure_endpoint=g.ENDPOINT,
-            azure_ad_token_provider=token_provider,
+    def openrouter_mk_client() -> OpenAI:
+        """Create an OpenRouter client using credentials from globals/.env."""
+        api_key = os.getenv("OPENROUTER_API_KEY", "")
+        base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+        return OpenAI(
+            base_url=base_url,
+            api_key=api_key
         )

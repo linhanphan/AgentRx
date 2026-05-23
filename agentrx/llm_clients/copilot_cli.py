@@ -416,6 +416,14 @@ class LLMAgent:
         end_timestamp = datetime.now()
         execution_time_sec = round(end_time - start_time, 4)
 
+        # Dump raw request and response json
+        from agentrx.llm_clients.utils import dump_call
+        request_payload = {
+            "model": self.model_name,
+            "messages": messages
+        }
+        dump_call(request_payload, response)
+
         usage = response.usage
         prompt_tokens = getattr(usage, "prompt_tokens", 0)
         completion_tokens = getattr(usage, "completion_tokens", 0)

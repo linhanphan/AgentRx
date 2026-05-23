@@ -114,8 +114,11 @@ def validate_endpoint_config(endpoint: str):
     elif endpoint == "azure":
         if not g.ENDPOINT:
             missing.append("AGENT_VERIFY_ENDPOINT")
+    elif endpoint == "openrouter":
+        if not os.environ.get("OPENROUTER_API_KEY", ""):
+            missing.append("OPENROUTER_API_KEY")
     else:
-        print(f"\nError: Unknown endpoint '{endpoint}'. Must be 'copilot', 'azure', or 'trapi'.")
+        print(f"\nError: Unknown endpoint '{endpoint}'. Must be 'copilot', 'azure', 'trapi', or 'openrouter'.")
         sys.exit(1)
 
     if missing:
@@ -415,7 +418,16 @@ def run_judge(input_path: str, run_dir: str, domain: str, endpoint: str,
 
     import agentrx.pipeline.globals as g
     api_version = g.API_VERSION
-    model_name = g.DEPLOYMENT if endpoint == "azure" else g.TRAPI_DEPLOYMENT_NAME
+    if endpoint == "azure":
+        model_name = g.DEPLOYMENT
+    elif endpoint == "openrouter":
+        model_name = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+        api_version = ""
+    elif endpoint == "copilot":
+        model_name = "copilot-cli"
+        api_version = ""
+    else:
+        model_name = g.TRAPI_DEPLOYMENT_NAME
     print(f"  [DEBUG][run_judge] api_version:           {api_version}")
     print(f"  [DEBUG][run_judge] model_name:            {model_name}")
 
@@ -525,8 +537,8 @@ Examples:
     parser.add_argument("--domain", default=None,
                         choices=["tau", "flash", "magentic"],
                         help="Domain (auto-detected if not specified)")
-    parser.add_argument("--endpoint", default=g.DEFAULT_ENDPOINT, choices=["copilot", "azure", "trapi"],
-                        help="LLM endpoint (default: copilot). Options: copilot (GitHub CLI), azure, trapi.")
+    parser.add_argument("--endpoint", default=g.DEFAULT_ENDPOINT, choices=["copilot", "azure", "trapi", "openrouter"],
+                        help="LLM endpoint (default: copilot). Options: copilot (GitHub CLI), azure, trapi, openrouter.")
     parser.add_argument("--stage", default=None, choices=STAGES,
                         help="Run ONLY this stage")
     parser.add_argument("--from-stage", default=None, choices=STAGES,
