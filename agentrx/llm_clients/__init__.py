@@ -1083,6 +1083,9 @@ def judge_trajectories(log_file, num_runs=1, ground_truth_task_ids=None):
     elif ENDPOINT_USED == "azure":
         api_version, model_name = g.API_VERSION, g.MODEL_NAME
         model_version, deployment_name = g.MODEL_NAME, g.DEPLOYMENT
+    elif ENDPOINT_USED == "openrouter":
+        api_version, model_name = "", os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+        model_version, deployment_name = "", ""
     else:
         api_version, model_name = g.TRAPI_API_VERSION, g.TRAPI_MODEL_NAME
         model_version, deployment_name = g.TRAPI_MODEL_VERSION, g.TRAPI_DEPLOYMENT_NAME

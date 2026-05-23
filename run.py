@@ -625,51 +625,81 @@ def run_pipeline(input_path: str, args):
     ensure_dir(run_dir)
     g.RUN_DIR = run_dir
 
-    print(f"Run directory: {run_dir}")
+    import sys
+    run_log_path = os.path.join(run_dir, "run.log")
 
-    # Load or init state
-    state = load_state(run_dir)
-    state["config"] = {
-        "input": input_path,
-        "domain": domain,
-        "endpoint": args.endpoint,
-        "started": state.get("config", {}).get("started", datetime.now().isoformat()),
-    }
-    save_state(run_dir, state)
+    class Tee:
+        def __init__(self, filepath, stream):
+            self.file = open(filepath, "a", encoding="utf-8", buffering=1)
+            self.stream = stream
 
-    # Determine which stages to run
-    completed = set(state.get("completed_stages", []))
+        def write(self, data):
+            self.stream.write(data)
+            self.file.write(data)
 
-    if args.stage:
-        stages_to_run = [args.stage]
-    elif args.from_stage:
-        start = stage_index(args.from_stage)
-        stages_to_run = STAGES[start:]
-    else:
-        stages_to_run = list(STAGES)
+        def flush(self):
+            self.stream.flush()
+            self.file.flush()
 
-    if args.skip_dynamic:
-        stages_to_run = [s for s in stages_to_run if s != "dynamic"]
-    if args.skip_static:
-        stages_to_run = [s for s in stages_to_run if s != "static"]
-    if args.skip_judge:
-        stages_to_run = [s for s in stages_to_run if s not in ("judge", "report")]
-    # Print plan
-    print(f"\nStages to run: {' -> '.join(stages_to_run)}")
-    if completed:
-        print(f"Previously completed: {', '.join(completed)}")
-    print()
+        def close(self):
+            if self.file:
+                self.file.close()
+                self.file = None
 
-    pipeline_start = time.perf_counter()
+    tee_stdout = Tee(run_log_path, sys.stdout)
+    tee_stderr = Tee(run_log_path, sys.stderr)
 
-    # Paths that get filled in as stages complete (or loaded from prior runs)
-    ir_path = os.path.join(run_dir, "trajectory_ir.json")
-    static_inv_path = os.path.join(run_dir, "static_invariants.json")
-    dynamic_inv_dir = os.path.join(run_dir, "dynamic_invariants")
-    checker_dir = os.path.join(run_dir, "checker_results")
-    judge_dir = os.path.join(run_dir, "judge_output")
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+
+    sys.stdout = tee_stdout
+    sys.stderr = tee_stderr
 
     try:
+        print(f"Run directory: {run_dir}")
+
+        # Load or init state
+        state = load_state(run_dir)
+        state["config"] = {
+            "input": input_path,
+            "domain": domain,
+            "endpoint": args.endpoint,
+            "started": state.get("config", {}).get("started", datetime.now().isoformat()),
+        }
+        save_state(run_dir, state)
+
+        # Determine which stages to run
+        completed = set(state.get("completed_stages", []))
+
+        if args.stage:
+            stages_to_run = [args.stage]
+        elif args.from_stage:
+            start = stage_index(args.from_stage)
+            stages_to_run = STAGES[start:]
+        else:
+            stages_to_run = list(STAGES)
+
+        if args.skip_dynamic:
+            stages_to_run = [s for s in stages_to_run if s != "dynamic"]
+        if args.skip_static:
+            stages_to_run = [s for s in stages_to_run if s != "static"]
+        if args.skip_judge:
+            stages_to_run = [s for s in stages_to_run if s not in ("judge", "report")]
+        # Print plan
+        print(f"\nStages to run: {' -> '.join(stages_to_run)}")
+        if completed:
+            print(f"Previously completed: {', '.join(completed)}")
+        print()
+
+        pipeline_start = time.perf_counter()
+
+        # Paths that get filled in as stages complete (or loaded from prior runs)
+        ir_path = os.path.join(run_dir, "trajectory_ir.json")
+        static_inv_path = os.path.join(run_dir, "static_invariants.json")
+        dynamic_inv_dir = os.path.join(run_dir, "dynamic_invariants")
+        checker_dir = os.path.join(run_dir, "checker_results")
+        judge_dir = os.path.join(run_dir, "judge_output")
+
         # --- IR ---
         if "ir" in stages_to_run:
             ir_path = run_ir(input_path, run_dir, domain, args.endpoint, state)
@@ -747,25 +777,31 @@ def run_pipeline(input_path: str, args):
             print(f"  python run.py {input_path} --run-dir {run_dir} --from-stage {not_done[0]}")
         raise
 
-    elapsed = time.perf_counter() - pipeline_start
+    else:
+        elapsed = time.perf_counter() - pipeline_start
 
-    banner("Pipeline Complete")
-    print(f"  Run directory: {run_dir}")
-    print(f"  Completed stages: {', '.join(state.get('completed_stages', []))}")
-    print(f"  Total time: {elapsed:.1f}s")
-    print()
-    print("  Outputs:")
-    for label, path in [
-        ("IR",         ir_path),
-        ("Static Inv", static_inv_path),
-        ("Dynamic Inv", dynamic_inv_dir),
-        ("Violations",  checker_dir),
-        ("Judge",       judge_dir),
-        ("Plots",       os.path.join(run_dir, "plots")),
-    ]:
-        if os.path.exists(path):
-            print(f"    {label:12s} {path}")
-    print()
+        banner("Pipeline Complete")
+        print(f"  Run directory: {run_dir}")
+        print(f"  Completed stages: {', '.join(state.get('completed_stages', []))}")
+        print(f"  Total time: {elapsed:.1f}s")
+        print()
+        print("  Outputs:")
+        for label, path in [
+            ("IR",         ir_path),
+            ("Static Inv", static_inv_path),
+            ("Dynamic Inv", dynamic_inv_dir),
+            ("Violations",  checker_dir),
+            ("Judge",       judge_dir),
+            ("Plots",       os.path.join(run_dir, "plots")),
+        ]:
+            if os.path.exists(path):
+                print(f"    {label:12s} {path}")
+        print()
+    finally:
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+        tee_stdout.close()
+        tee_stderr.close()
 
 
 if __name__ == "__main__":
